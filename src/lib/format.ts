@@ -30,9 +30,21 @@ export function formatNumber(value: number): string {
   return numberFormatter.format(Number.isFinite(value) ? value : 0);
 }
 
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * `new Date("2026-11-20")` se interpreta como UTC y en Chile muestra el día
+ * anterior. Las fechas sin hora se leen como medianoche local.
+ */
+function parseDate(value: string): Date {
+  return DATE_ONLY.test(value)
+    ? new Date(`${value}T00:00:00`)
+    : new Date(value);
+}
+
 export function formatDate(value?: string): string {
   if (!value) return "—";
-  const date = new Date(value);
+  const date = parseDate(value);
   if (Number.isNaN(date.getTime())) return "—";
   return dateFormatter.format(date);
 }
@@ -91,7 +103,7 @@ export function marginPercent(total: number, margin: number): number {
 
 export function isSameMonth(value: string | undefined, reference: Date): boolean {
   if (!value) return false;
-  const date = new Date(value);
+  const date = parseDate(value);
   if (Number.isNaN(date.getTime())) return false;
   return (
     date.getFullYear() === reference.getFullYear() &&
@@ -104,7 +116,7 @@ export function isWithinLastDays(
   days: number,
 ): boolean {
   if (!value) return false;
-  const date = new Date(value);
+  const date = parseDate(value);
   if (Number.isNaN(date.getTime())) return false;
   const cutoff = new Date();
   cutoff.setHours(0, 0, 0, 0);
