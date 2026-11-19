@@ -1,7 +1,7 @@
-import { getDb, resetDatabase } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { nowIso } from "@/lib/ids";
 import { queueChange } from "@/lib/sync";
-import { seedDatabase } from "@/lib/seed";
+import { reseedDemoDatabase } from "@/lib/seed";
 import type { Tenant, TenantPlan } from "@/types/domain";
 
 export async function updateTenant(
@@ -106,8 +106,7 @@ export async function exportDatabase(): Promise<ExportSummary> {
 }
 
 export async function resetDemoData(): Promise<void> {
-  await resetDatabase();
-  await seedDatabase();
+  await reseedDemoDatabase();
 }
 
 export async function estimateStorage(): Promise<{

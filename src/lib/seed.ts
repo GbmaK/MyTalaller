@@ -1,5 +1,6 @@
-import { getDb } from "@/lib/db";
-import { daysFromToday } from "@/lib/format";
+import { getDb, resetDatabase } from "@/lib/db";
+import { daysFromToday, todayInputValue } from "@/lib/format";
+import { isOpenOrder } from "@/types/domain";
 import type {
   Customer,
   Equipment,
@@ -548,15 +549,15 @@ function buildOrders(): {
   return { orders, items };
 }
 
-let seedPromise: Promise<void> | null = null;
+export interface SeedResult {
+  /** true cuando la demo existía pero estaba vencida y se regeneró. */
+  refreshed: boolean;
+}
 
-async function runSeed(): Promise<void> {
-  if (typeof window === "undefined") return;
+let seedPromise: Promise<SeedResult> | null = null;
 
+async function insertDemoData(): Promise<void> {
   const db = getDb();
-  const existing = await db.tenants.count();
-  if (existing > 0) return;
-
   const { orders, items } = buildOrders();
 
   await db.transaction(
@@ -582,10 +583,46 @@ async function runSeed(): Promise<void> {
 }
 
 /**
+ * La demo se considera vencida cuando ninguna orden abierta tiene una entrega
+ * futura: el tablero se vería todo atrasado y dejaría de representar el taller.
+ */
+function isDemoStale(orders: ServiceOrder[]): boolean {
+  const open = orders.filter((order) => isOpenOrder(order.status));
+  if (open.length === 0) return false;
+
+  const today = todayInputValue();
+  return open.every((order) => !order.promisedAt || order.promisedAt < today);
+}
+
+async function runSeed(): Promise<SeedResult> {
+  if (typeof window === "undefined") return { refreshed: false };
+
+  const db = getDb();
+  const existing = await db.tenants.count();
+
+  if (existing === 0) {
+    await insertDemoData();
+    return { refreshed: false };
+  }
+
+  const orders = await db.serviceOrders
+    .where("tenantId")
+    .equals(DEMO_TENANT_ID)
+    .toArray();
+
+  if (!isDemoStale(orders)) return { refreshed: false };
+
+  await resetDatabase();
+  await insertDemoData();
+  return { refreshed: true };
+}
+
+/**
  * Siembra la demo una sola vez. El lock evita que React StrictMode (o dos
  * pestañas) dispare dos inserciones concurrentes y provoque duplicados.
+ * Si la demo quedó vencida, la regenera con fechas relativas a hoy.
  */
-export function seedDatabase(): Promise<void> {
+export function seedDatabase(): Promise<SeedResult> {
   if (!seedPromise) {
     seedPromise = runSeed().catch((error: unknown) => {
       seedPromise = null;
@@ -593,4 +630,11 @@ export function seedDatabase(): Promise<void> {
     });
   }
   return seedPromise;
+}
+
+/** Borra la base local y vuelve a sembrar la demo desde cero. */
+export async function reseedDemoDatabase(): Promise<SeedResult> {
+  await resetDatabase();
+  seedPromise = null;
+  return seedDatabase();
 }

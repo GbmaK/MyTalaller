@@ -121,3 +121,14 @@ Mencionar el estado real:
 - Cada visitante tiene su propia base local.
 - Si se abre en otro navegador, se ve la demo desde cero.
 - El aviso **Demo** aparece automáticamente mientras Supabase no esté configurado.
+
+## 7. Si la demo se ve vencida
+
+Las fechas de la demo son relativas al día en que se sembró. Si pasan varios días, todas las entregas quedan en el pasado y el tablero se ve atrasado.
+
+La app lo detecta sola: al abrir, si **ninguna orden abierta tiene entrega futura**, regenera los datos con fechas de hoy y recarga una vez. No hay que hacer nada.
+
+Para forzarlo a mano: **Configuración → Reiniciar demo**. Eso borra los cambios locales y vuelve al estado inicial con fechas actuales.
+
+Si al mostrarla a un cliente quieres conservar cambios, no reinicies: la demo sigue funcionando aunque las fechas estén atrasadas.
+
